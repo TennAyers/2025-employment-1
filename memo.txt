@@ -1,0 +1,23 @@
+.NET SDK
+
+Visual Studio Code (VSC)
+
+C# Dev Kit (VSC拡張機能)
+
+
+
+
+1.プロジェクト作成
+dotnet new mvc
+ASP.NET CoreはデフォルトでHTTPS通信を使用します。初めて開発する際に、ブラウザから警告が出ないようにするため、一度だけ以下のコマンドを実行して開発用の証明書を信頼させてください。
+
+証明書を信頼させる:
+ターミナルで以下のコマンドを実行します。
+dotnet dev-certs https --trust
+
+アプリケーションを起動する:dotnet run
+http://localhost:5147
+
+
+Viewsはpythonで言うtemplatesフォルダーと同じ
+
