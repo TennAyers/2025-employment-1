@@ -5,7 +5,11 @@ Visual Studio Code (VSC)
 C# Dev Kit (VSC拡張機能)
 
 
-
+コマンド
+dotnet run
+dontnet built
+dotnet ef migrations add InitialCreate
+dotnet ef database update
 
 1.プロジェクト作成
 dotnet new mvc
@@ -20,4 +24,44 @@ http://localhost:5147
 
 
 Viewsはpythonで言うtemplatesフォルダーと同じ
+
+SQLliteの実装
+dotnet add package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+dotnet add package Microsoft.EntityFrameworkCore.Design
+dotnet tool install --global dotnet-ef
+
+Dataフォルダーを新規作成して、そこにApplicationDbContext.csを追加して
+using Microsoft.EntityFrameworkCore;
+using _2025_employment_1.Models;
+
+namespace _2025_employment_1.Data 
+
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+    }
+}
+
+上記内容を記述するこの際にアプリケーション名を挿入する今回は”_2025_employment_1”これ
+そして、project.csの先頭に
+using _2025_employment_1.Data;
+using Microsoft.EntityFrameworkCore;
+を挿入
+appsettings.josn
+DB関連コマンドには
+
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=app.db"
+  },
+
+上記内容を記述するこの際にアプリケーション名を挿入する今回は”_2025_employment_1”これ
+
+dotnet ef migrations add InitialCreate
+dotnet ef database update
 
