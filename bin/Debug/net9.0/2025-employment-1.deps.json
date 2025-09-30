@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "2025-employment-1/1.0.0": {
         "dependencies": {
+          "Microsoft.Data.Sqlite": "9.0.7",
           "Microsoft.EntityFrameworkCore.Design": "9.0.7",
           "Microsoft.EntityFrameworkCore.Sqlite": "9.0.7",
           "Microsoft.EntityFrameworkCore.Tools": "9.0.7"
@@ -318,6 +319,13 @@
           "lib/net7.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll": {
             "locale": "zh-Hant"
           }
+        }
+      },
+      "Microsoft.Data.Sqlite/9.0.7": {
+        "dependencies": {
+          "Microsoft.Data.Sqlite.Core": "9.0.7",
+          "SQLitePCLRaw.bundle_e_sqlite3": "2.1.10",
+          "SQLitePCLRaw.core": "2.1.10"
         }
       },
       "Microsoft.Data.Sqlite.Core/9.0.7": {
@@ -844,6 +852,13 @@
       "sha512": "sha512-IEYreI82QZKklp54yPHxZNG9EKSK6nHEkeuf+0Asie9llgS1gp0V1hw7ODG+QyoB7MuAnNQHmeV1Per/ECpv6A==",
       "path": "microsoft.codeanalysis.workspaces.msbuild/4.8.0",
       "hashPath": "microsoft.codeanalysis.workspaces.msbuild.4.8.0.nupkg.sha512"
+    },
+    "Microsoft.Data.Sqlite/9.0.7": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zPyE8rASXQALTOHI/flV1YzCErlnuDm9Wv7jxYhC1KkheWBMJRJ95Yl8ZqXPa/8R16DJ3IZn8KnOVcqs3bYBmA==",
+      "path": "microsoft.data.sqlite/9.0.7",
+      "hashPath": "microsoft.data.sqlite.9.0.7.nupkg.sha512"
     },
     "Microsoft.Data.Sqlite.Core/9.0.7": {
       "type": "package",
