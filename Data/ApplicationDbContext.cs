@@ -10,7 +10,9 @@ namespace _2025_employment_1.Data
         {
         }
 
-        public DbSet<FaceMemo> FaceMemos { get; set; }
+        // ▼▼▼ この行を追加 ▼▼▼
+        // Productモデルを扱うためのDbSet。テーブル名は「Products」になります。
+        public DbSet<Product> Products { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }
-
