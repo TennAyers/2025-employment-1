@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using _2025_employment_1.Data;
 using _2025_employment_1.Models;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace _2025_employment_1.Controllers
 {
-    [ApiController]
     [Route("api/face")]
+    [ApiController]
     public class FaceApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -17,90 +17,101 @@ namespace _2025_employment_1.Controllers
             _context = context;
         }
 
-        // ▼▼▼ 1. 顔登録API (変更なし) ▼▼▼
-        [HttpPost("register")]
-        public async Task<IActionResult> RegisterFace([FromBody] FaceMemo newMemo)
+        // 1. 顔の識別 (POST: api/face/identify)
+        [HttpPost("identify")]
+        public async Task<IActionResult> Identify([FromBody] IdentifyRequest request)
         {
-            try
+            try 
             {
-                await _context.FaceMemos.AddAsync(newMemo);
-                await _context.SaveChangesAsync(); 
+                var inputDescriptor = JsonSerializer.Deserialize<float[]>(request.Descriptor);
+                if (inputDescriptor == null) return BadRequest("Invalid descriptor");
+
+                var allFaces = await _context.FaceMemos.Include(f => f.ConversationLogs).ToListAsync();
                 
-                return Ok(new { success = true, id = newMemo.Id, name = newMemo.Name });
+                FaceMemo? bestMatch = null;
+                double minDistance = 0.6; // 閾値 (0.6以下なら同一人物とみなす)
+
+                foreach (var face in allFaces)
+                {
+                    var storedDescriptor = JsonSerializer.Deserialize<float[]>(face.FaceDescriptorJson);
+                    if (storedDescriptor != null)
+                    {
+                        var distance = EuclideanDistance(inputDescriptor, storedDescriptor);
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            bestMatch = face;
+                        }
+                    }
+                }
+
+                if (bestMatch != null)
+                {
+                    // 直近の会話ログを3件取得
+                    var logs = await _context.ConversationLogs
+                        .Where(l => l.FaceMemoId == bestMatch.Id)
+                        .OrderByDescending(l => l.Date)
+                        .Take(3)
+                        .Select(l => new { l.Date, l.Content })
+                        .ToListAsync();
+
+                    return Ok(new { 
+                        success = true, 
+                        id = bestMatch.Id,
+                        name = bestMatch.Name, 
+                        affiliation = bestMatch.Affiliation, 
+                        notes = bestMatch.Notes,
+                        logs = logs // 会話ログも返す
+                    });
+                }
+                
+                return Ok(new { success = false, message = "Unknown" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, ex.Message);
             }
         }
 
-        // ▼▼▼ 2. 顔識別API (修正あり) ▼▼▼
-        [HttpPost("identify")]
-        public async Task<IActionResult> IdentifyFace([FromBody] IdentifyRequest request)
+        // 2. 顔の登録 (POST: api/face/register)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] FaceMemo model)
         {
-            var registeredFaces = await _context.FaceMemos.ToListAsync();
-
-            var queryDescriptor = JsonSerializer.Deserialize<float[]>(request.Descriptor);
-
-            // ▼▼▼ 修正点 1 (CS8600 / CS8604) ▼▼▼
-            // JSから送られたデータが null ではないかチェックする
-            if (queryDescriptor == null)
-            {
-                return BadRequest(new { success = false, message = "Invalid descriptor data."});
-            }
-
-            FaceMemo? bestMatch = null; // <-- null許容に変更
-            double bestDistance = 0.6; 
-
-            foreach (var face in registeredFaces)
-            {
-                var registeredDescriptor = JsonSerializer.Deserialize<float[]>(face.FaceDescriptorJson);
-
-                // ▼▼▼ 修正点 2 (CS8604) ▼▼▼
-                // DBから取得したデータも null ではないかチェックする
-                if (registeredDescriptor != null)
-                {
-                    // 類似度（ユークリッド距離）を計算
-                    double distance = CalculateEuclideanDistance(queryDescriptor, registeredDescriptor);
-
-                    if (distance < bestDistance)
-                    {
-                        bestDistance = distance;
-                        bestMatch = face;
-                    }
-                }
-            }
-
-            if (bestMatch != null)
-            {
-                return Ok(new { 
-                    success = true, 
-                    name = bestMatch.Name, 
-                    affiliation = bestMatch.Affiliation, 
-                    notes = bestMatch.Notes 
-                });
-            }
-            else
-            {
-                return Ok(new { success = false, name = "???" });
-            }
+            _context.FaceMemos.Add(model);
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, name = model.Name });
         }
 
-        // C#で類似度（距離）を計算する関数 (変更なし)
-        private double CalculateEuclideanDistance(float[] v1, float[] v2)
+        // 3. 会話ログの追加 (POST: api/face/add_log)
+        [HttpPost("add_log")]
+        public async Task<IActionResult> AddLog([FromBody] LogRequest request)
         {
-            double sum = 0;
-            for (int i = 0; i < v1.Length; i++)
+            var face = await _context.FaceMemos.FindAsync(request.FaceId);
+            if (face == null) return NotFound("User not found");
+
+            var log = new ConversationLog
             {
-                sum += Math.Pow(v1[i] - v2[i], 2);
-            }
+                FaceMemoId = request.FaceId,
+                Content = request.Content,
+                Date = DateTime.Now
+            };
+
+            _context.ConversationLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+
+        // 距離計算ロジック
+        private double EuclideanDistance(float[] d1, float[] d2)
+        {
+            double sum = 0.0;
+            for (int i = 0; i < d1.Length; i++) sum += Math.Pow(d1[i] - d2[i], 2);
             return Math.Sqrt(sum);
         }
     }
 
-    // IdentifyAPI が受け取るJSONの型定義
-    public class IdentifyRequest
-    {
-        public string Descriptor { get; set; } = null!; // <-- = null!; を追加
-    }
+    // リクエスト用クラス
+    public class IdentifyRequest { public string Descriptor { get; set; } }
+    public class LogRequest { public int FaceId { get; set; } public string Content { get; set; } }
 }

@@ -1,201 +1,426 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "試作";
 }
-<div class="text-center">
-    <h1 class="display-4">こんにちはWebアプリケーション！</h1>
-    <div class="text-center">
-    <h1 class="display-4">ようこそ</h1>
-    
-    <div id="user-info" style="display: none;">
-        <p><img id="user-photo" src="" width="50" style="border-radius: 50%;"> <span id="user-name"></span> さん、こんにちは！</p>
-        <button id="logout-button" class="btn btn-secondary">ログアウト</button>
-    </div>
 
-<div class="text-center">
-    <h1 class="display-4">顔認識 AR風デモ</h1>
-    
+
+<div class="dashboard-container">
     <script defer src="~/js/face-api.js"></script>
 
-    <div style="position: relative; width: 640px; margin: auto;">
-        <video id="video" width="640" height="480" autoplay muted></video>
-        <canvas id="overlay" style="position: absolute; top: 0; left: 0;"></canvas>
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+
+    <div class="panel-left">
+        <h3>新規登録</h3>
+        
+        <div class="input-group">
+            <input type="text" id="regName" class="ar-input" placeholder="名前">
+            <button class="mic-btn" onclick="startSpeech('regName', this)">🎤</button>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="regAffiliation" class="ar-input" placeholder="所属">
+            <button class="mic-btn" onclick="startSpeech('regAffiliation', this)">🎤</button>
+        </div>
+        
+        <div class="input-group">
+            <textarea id="regNotes" class="ar-input" placeholder="メモ" rows="3"></textarea>
+            <button class="mic-btn" onclick="startSpeech('regNotes', this)">🎤</button>
+        </div>
+
+        <button id="registerButton" class="ar-btn">顔データを登録</button>
+        <div id="status" class="status-bar">システム準備完了</div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="/Home/Edit" style="color: #00d4ff; text-decoration: none; font-size: 0.8rem; border-bottom: 1px dashed #00d4ff; padding-bottom: 2px;">
+                情報編集画面&gt;
+            </a>
+        </div>
     </div>
 
-    <div>
-        <h3>顔を登録</h3>
-        <input type="text" id="regName" placeholder="名前 (例: 山田太郎)">
-        <input type="text" id="regAffiliation" placeholder="所属 (例: A株式会社)">
-        <textarea id="regNotes" placeholder="メモ..."></textarea>
-        <button id="registerButton">この顔で登録</button>
-        <div id="status"></div>
+    <div class="panel-right">
+        <h3>対象分析</h3>
+        
+        <div class="info-card">
+            <div class="info-label">名前</div>
+            <div id="detName" class="info-value">スキャン中...</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">所属</div>
+            <div id="detAffiliation" class="info-value">---</div>
+        </div>
+        
+        <div class="log-section-title">会話ログ</div>
+        <div id="logContainer" class="log-container">
+            <div style="text-align:center; color:#666; margin-top:20px;">履歴なし</div>
+        </div>
+
+        <div id="logInputArea" style="opacity:0.5; pointer-events:none; margin-top:auto;">
+            <div class="input-group" style="margin-bottom:5px;">
+                <input type="text" id="newLogContent" class="ar-input" placeholder="新しい会話を記録...">
+                <button class="mic-btn" onclick="startSpeech('newLogContent', this)">🎤</button>
+            </div>
+            <button id="addLogButton" class="ar-btn" style="padding:10px; font-size:0.8rem;">記録を追加</button>
+        </div>
     </div>
 </div>
+
+
+
+
 @section Scripts {
 <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
     const statusEl = document.getElementById('status');
-    let lastDetectedDescriptor = null; // 登録用に最後に検出した顔特徴量を保持
+    
+    // 右パネルの要素
+    const detNameEl = document.getElementById('detName');
+    const detAffiliationEl = document.getElementById('detAffiliation');
+    const logContainer = document.getElementById('logContainer');
+    const logInputArea = document.getElementById('logInputArea');
+    const newLogInput = document.getElementById('newLogContent');
 
-    // ----- face-api.js の初期化 (変更なし) -----
-    async function loadAIModels() {
+    let displaySize = { width: 640, height: 480 }; 
+    let lastDetectedDescriptor = null;
+    let currentIdentifiedUserId = null; // 現在認識中のユーザーID
+    let hands = null;
+    let lastHandLandmarks = null;
+    let isPinching = false, wasPinching = false;
+
+    // =======================================================
+    // 1. 音声入力 (Web Speech API)
+    // =======================================================
+    function startSpeech(targetId, btn) {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Chromeブラウザをご利用ください");
+            return;
+        }
+        const recognition = new webkitSpeechRecognition();
+        recognition.lang = 'ja-JP'; 
+        recognition.interimResults = true; 
+        recognition.continuous = false; 
+        recognition.maxAlternatives = 1;
+
+        const inputEl = document.getElementById(targetId);
+        let baseText = inputEl.value; 
+        if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+
+        btn.classList.add('listening');
+        statusEl.innerText = "聞き取り中...";
+        statusEl.style.color = "#00d4ff";
+
+        recognition.onresult = (event) => {
+            let interim = '', final = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) final += event.results[i][0].transcript;
+                else interim += event.results[i][0].transcript;
+            }
+            inputEl.value = baseText + final + interim;
+            inputEl.scrollTop = inputEl.scrollHeight;
+        };
+
+        recognition.onend = () => {
+            btn.classList.remove('listening');
+            statusEl.innerText = "待機中";
+        };
+        recognition.start();
+    }
+    window.startSpeech = startSpeech;
+
+    // =======================================================
+    // 2. モデル読み込み
+    // =======================================================
+    async function loadModels() {
         try {
             await faceapi.nets.tinyFaceDetector.loadFromUri('/js/models');
             await faceapi.nets.faceLandmark68Net.loadFromUri('/js/models');
             await faceapi.nets.faceRecognitionNet.loadFromUri('/js/models');
             
-            console.log("AIモデル読み込み完了");
-            startFaceDetectionLoop();
-            
+            // 手の認識モデル設定 (MediaPipe)
+            hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@@mediapipe/hands/${file}`});
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            hands.onResults(results => {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    lastHandLandmarks = results.multiHandLandmarks[0];
+                } else {
+                    lastHandLandmarks = null;
+                }
+            });
+            console.log("モデル読み込み完了");
+            return true;
         } catch (err) {
-            console.error("AIモデルの読み込みに失敗しました:", err);
-            statusEl.innerText = "AIモデルの読み込みに失敗。F12でコンソールを確認し '404 (Not Found)' が出ていないか確認してください。";
+            console.error(err);
+            statusEl.innerText = "モデルエラー";
+            return false;
         }
     }
 
-    // ----- カメラの起動 (変更なし) -----
+    // =======================================================
+    // 3. カメラ起動 & サイズ調整
+    // =======================================================
     async function startVideo() {
-        console.log("カメラ起動を試みます...");
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
+            });
             video.srcObject = stream;
-            console.log("カメラ起動成功。映像をセットしました。");
         } catch (err) {
-            console.error("カメラの起動に失敗しました:", err);
-            statusEl.innerText = "カメラの許可がブロックされました。ブラウザのアドレスバーの左側にある鍵マークを確認してください。";
+            statusEl.innerText = "カメラエラー";
         }
     }
 
-    // ----- リアルタイム顔認識ループ -----
-    async function detectFaceTask() {
+    function updateCanvasSize() {
+        if (!video.videoWidth) return;
+        const wRatio = window.innerWidth / window.innerHeight;
+        const vRatio = video.videoWidth / video.videoHeight;
+        let w, h;
+
+        // 全画面フィット計算
+        if (wRatio > vRatio) {
+            h = window.innerHeight; w = h * vRatio;
+        } else {
+            w = window.innerWidth; h = w / vRatio;
+        }
+
+        video.style.width = `${w}px`;
+        video.style.height = `${h}px`;
+        canvas.width = w;
+        canvas.height = h;
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
         
+        displaySize = { width: w, height: h };
+        faceapi.matchDimensions(canvas, displaySize);
+    }
+    
+    window.addEventListener('resize', updateCanvasSize);
+    video.addEventListener('loadedmetadata', updateCanvasSize);
+
+    // =======================================================
+    // 4. 指操作 (ハンドトラッキング)
+    // =======================================================
+    function handleFingerInteraction(landmarks) {
+        if (!landmarks) return;
+        const indexTip = landmarks[8];
+        const thumbTip = landmarks[4];
+
+        const x = indexTip.x * canvas.width;
+        const y = indexTip.y * canvas.height;
+
+        const distance = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
+        isPinching = (distance < 0.05);
+
+        // カーソル描画
+        ctx.beginPath();
+        ctx.arc(x, y, isPinching ? 6 : 10, 0, 2 * Math.PI);
+        ctx.fillStyle = isPinching ? '#ff0055' : '#00d4ff';
+        ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.stroke();
+
+        // クリック判定
+        const rect = canvas.getBoundingClientRect();
+        const el = document.elementFromPoint(rect.left + x, rect.top + y);
+        
+        document.querySelectorAll('.hovered-by-finger').forEach(e => e.classList.remove('hovered-by-finger'));
+
+        if (el && (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'A')) {
+            el.classList.add('hovered-by-finger');
+            if (isPinching && !wasPinching) {
+                el.click();
+                el.focus();
+                createRipple(rect.left + x, rect.top + y);
+            }
+        }
+        wasPinching = isPinching;
+    }
+    
+    // クリック時の波紋エフェクト
+    function createRipple(x, y) {
+        const ripple = document.createElement('div');
+        ripple.style.position = 'fixed';
+        ripple.style.left = x + 'px'; ripple.style.top = y + 'px';
+        ripple.style.width = '20px'; ripple.style.height = '20px';
+        ripple.style.background = 'rgba(255, 255, 255, 0.6)';
+        ripple.style.borderRadius = '50%';
+        ripple.style.transform = 'translate(-50%, -50%) scale(1)';
+        ripple.style.transition = 'transform 0.4s, opacity 0.4s';
+        ripple.style.pointerEvents = 'none'; ripple.style.zIndex = 9999;
+        document.body.appendChild(ripple);
+        requestAnimationFrame(() => {
+            ripple.style.transform = 'translate(-50%, -50%) scale(3)';
+            ripple.style.opacity = '0';
+        });
+        setTimeout(() => ripple.remove(), 400);
+    }
+
+    // =======================================================
+    // 5. メインループ & AI処理
+    // =======================================================
+    async function detectionLoop() {
         if (!video || video.readyState < 4) { 
-            requestAnimationFrame(detectFaceTask);
+            requestAnimationFrame(detectionLoop);
             return; 
         }
 
+        if (hands) await hands.send({image: video});
+
+        let resizedDetections = [];
         try {
             const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
                 .withFaceLandmarks()
                 .withFaceDescriptors();
+            resizedDetections = faceapi.resizeResults(detections, displaySize);
+        } catch (e) {}
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const ONLY_ONE_FACE_DETECTED = 1;
+        if (resizedDetections.length === 1) {
+            const detection = resizedDetections[0];
+            lastDetectedDescriptor = detection.descriptor;
+            drawTechBox(detection.detection.box);
 
-            if (detections.length === ONLY_ONE_FACE_DETECTED) {
-                const detection = detections[0];
-                const descriptor = detection.descriptor;
-
-                // ▼▼▼ 修正点 1 ▼▼▼
-                // 検出が成功したら、常に lastDetectedDescriptor を上書き更新する
-                // (これで、ユーザーがボタンを押す瞬間にデータが消えなくなります)
-                lastDetectedDescriptor = descriptor; 
-
-                // ★ C# API (識別) を呼び出す (変更なし)
-                const response = await fetch('/api/face/identify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ Descriptor: JSON.stringify(Array.from(descriptor)) }) 
-                });
-
-                if (!response.ok) {
-                    console.error("APIエラー:", response.status, await response.text());
-                    statusEl.innerText = `APIエラー: ${response.status}。 C#サーバー側のログを確認してください。`;
-                } else {
-                    const result = await response.json();
-                    // 認識結果をAR風に描画 (変更なし)
-                    const box = detection.detection.box;
-                    ctx.strokeStyle = 'blue';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(box.x, box.y, box.width, box.height);
-                    
-                    ctx.fillStyle = 'blue';
-                    ctx.font = '20px Arial';
-                    ctx.fillText(result.name, box.x, box.y - 10); 
-                    if (result.success && result.affiliation) {
-                        ctx.fillText(result.affiliation, box.x, box.y + box.height + 20);
-                    }
-                }
-            } else {
-                // ▼▼▼ 修正点 2 ▼▼▼
-                // 顔が0個または複数でも、lastDetectedDescriptor を null に「しない」
-                // (何もしない。最後に検出した顔データを保持し続ける)
-            }
-        
-        } catch (err) {
-            console.error("顔認識ループ（requestAnimationFrame）内でエラー:", err);
-        }
-
-        requestAnimationFrame(detectFaceTask);
-    }
-
-    // ループ開始用の関数 (変更なし)
-    function startFaceDetectionLoop() {
-        console.log("顔認識ループを開始します。");
-        canvas.width = video.width;
-        canvas.height = video.height;
-        requestAnimationFrame(detectFaceTask);
-    }
-    
-
-    // ----- 登録ボタンの処理 -----
-    document.getElementById('registerButton').addEventListener('click', async () => {
-        if (!lastDetectedDescriptor) {
-            statusEl.innerText = "登録する顔が検出されていません。(カメラに顔を1つだけ写してください)";
-            return;
-        }
-        const name = document.getElementById('regName').value;
-        const affiliation = document.getElementById('regAffiliation').value;
-        const notes = document.getElementById('regNotes').value;
-        
-        const memoData = {
-            Name: name,
-            Affiliation: affiliation,
-            Notes: notes,
-            FaceDescriptorJson: JSON.stringify(Array.from(lastDetectedDescriptor)) 
-        };
-
-        statusEl.innerText = "登録中...";
-
-        try {
-            const response = await fetch('/api/face/register', {
+            // 識別API呼び出し
+            fetch('/api/face/identify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(memoData)
-            });
+                body: JSON.stringify({ Descriptor: JSON.stringify(Array.from(detection.descriptor)) }) 
+            }).then(r => r.json()).then(res => {
+                if (res.success) {
+                    // 認識成功
+                    detNameEl.innerText = res.name;
+                    detAffiliationEl.innerText = res.affiliation || "なし";
+                    
+                    // ログ更新
+                    updateLogView(res.logs);
 
-            if (!response.ok) {
-                statusEl.innerText = `登録APIエラー: ${response.status}。 C#サーバー側のログを確認してください。`;
-                return;
-            }
-
-            const result = await response.json();
-            if(result.success) {
-                statusEl.innerText = `「${result.name}」さんを登録しました。`;
-
-                // ▼▼▼ 修正点 3 ▼▼▼
-                // 登録が成功したら、保持していた顔データとフォームをクリアする
-                lastDetectedDescriptor = null;
-                document.getElementById('regName').value = '';
-                document.getElementById('regAffiliation').value = '';
-                document.getElementById('regNotes').value = '';
-
-            } else {
-                statusEl.innerText = `登録に失敗しました: ${result.message}`;
-            }
-        } catch (err) {
-            console.error("登録処理中にエラー:", err);
-            statusEl.innerText = "登録処理中に通信エラーが発生しました。";
+                    // ログ入力有効化
+                    currentIdentifiedUserId = res.id;
+                    logInputArea.style.opacity = "1";
+                    logInputArea.style.pointerEvents = "auto";
+                } else {
+                    // 未登録
+                    detNameEl.innerText = "未登録の対象";
+                    detAffiliationEl.innerText = "---";
+                    logContainer.innerHTML = '<div style="text-align:center; color:#666; margin-top:20px;">未登録の対象</div>';
+                    
+                    currentIdentifiedUserId = null;
+                    logInputArea.style.opacity = "0.5";
+                    logInputArea.style.pointerEvents = "none";
+                }
+            }).catch(() => {});
+        } else {
+            // 顔がない場合などは何もしない
         }
+
+        handleFingerInteraction(lastHandLandmarks);
+        requestAnimationFrame(detectionLoop);
+    }
+
+    // ログ表示の更新
+    function updateLogView(logs) {
+        if (!logs || logs.length === 0) {
+            logContainer.innerHTML = '<div style="text-align:center; color:#666; margin-top:20px;">最近のログなし</div>';
+            return;
+        }
+        let html = '';
+        logs.forEach(l => {
+            const date = new Date(l.date).toLocaleString();
+            html += `<div class="log-item"><div class="log-date">${date}</div><div class="log-content">${l.content}</div></div>`;
+        });
+        logContainer.innerHTML = html;
+    }
+
+    // SF風ボックス描画
+    function drawTechBox(box) {
+        const { x, y, width: w, height: h } = box;
+        ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 2;
+        ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 15;
+        ctx.beginPath();
+        // コーナーの描画
+        ctx.moveTo(x, y+20); ctx.lineTo(x, y); ctx.lineTo(x+20, y);
+        ctx.moveTo(x+w-20, y); ctx.lineTo(x+w, y); ctx.lineTo(x+w, y+20);
+        ctx.moveTo(x+w, y+h-20); ctx.lineTo(x+w, y+h); ctx.lineTo(x+w-20, y+h);
+        ctx.moveTo(x+20, y+h); ctx.lineTo(x, y+h); ctx.lineTo(x, y+h-20);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // 十字ターゲット
+        ctx.lineWidth = 1; ctx.globalAlpha = 0.3; ctx.beginPath();
+        ctx.moveTo(x+w/2, y); ctx.lineTo(x+w/2, y-10);
+        ctx.moveTo(x+w/2, y+h); ctx.lineTo(x+w/2, y+h+10);
+        ctx.moveTo(x, y+h/2); ctx.lineTo(x-10, y+h/2);
+        ctx.moveTo(x+w, y+h/2); ctx.lineTo(x+w+10, y+h/2);
+        ctx.stroke(); ctx.globalAlpha = 1.0;
+    }
+
+    // 6. イベント登録
+    startVideo();
+    video.addEventListener('play', async () => {
+        updateCanvasSize();
+        const loaded = await loadModels();
+        if (loaded) requestAnimationFrame(detectionLoop);
+    });
+    
+    // 顔登録ボタン
+    document.getElementById('registerButton').addEventListener('click', async () => {
+        if (!lastDetectedDescriptor) {
+            statusEl.innerText = "対象が見つかりません";
+            statusEl.style.color = "red";
+            return;
+        }
+        statusEl.innerText = "処理中...";
+        const data = {
+            Name: document.getElementById('regName').value,
+            Affiliation: document.getElementById('regAffiliation').value,
+            Notes: document.getElementById('regNotes').value,
+            FaceDescriptorJson: JSON.stringify(Array.from(lastDetectedDescriptor)) 
+        };
+        try {
+            const res = await fetch('/api/face/register', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                statusEl.innerText = "登録完了";
+                statusEl.style.color = "#00ff88";
+                document.getElementById('regName').value = "";
+                document.getElementById('regAffiliation').value = "";
+                document.getElementById('regNotes').value = "";
+                lastDetectedDescriptor = null;
+            } else {
+                statusEl.innerText = "エラー: " + result.message;
+            }
+        } catch (e) { statusEl.innerText = "通信エラー"; }
     });
 
-    // ----- 実行開始部分 (変更なし) -----
-    startVideo();
-    video.addEventListener('play', () => {
-        console.log("ビデオ再生が開始されました。AIモデルの読み込みを開始します。");
-        loadAIModels();
+    // 会話ログ追加ボタン
+    document.getElementById('addLogButton').addEventListener('click', async () => {
+        const content = newLogInput.value;
+        if (!currentIdentifiedUserId || !content) return;
+
+        const btn = document.getElementById('addLogButton');
+        btn.innerText = "保存中...";
+        
+        try {
+            const res = await fetch('/api/face/add_log', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ FaceId: currentIdentifiedUserId, Content: content })
+            });
+            if (res.ok) {
+                newLogInput.value = "";
+                btn.innerText = "保存!";
+                setTimeout(() => btn.innerText = "記録を追加", 1000);
+            }
+        } catch(e) { btn.innerText = "エラー"; }
     });
 
 </script>

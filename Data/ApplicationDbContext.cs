@@ -11,6 +11,8 @@ namespace _2025_employment_1.Data
         }
 
         public DbSet<FaceMemo> FaceMemos { get; set; }
+        public DbSet<ConversationLog> ConversationLogs { get; set; }
+        
     }
 }
 

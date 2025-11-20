@@ -1,0 +1,101 @@
+@model IEnumerable<_2025_employment_1.Models.FaceMemo>
+
+@{
+    ViewData["Title"] = "Database Manager";
+}
+
+<style>
+    /* 全体スタイル */
+    body { background-color: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; }
+    
+    .manager-container {
+        max-width: 1000px;
+        margin: 50px auto;
+        padding: 20px;
+    }
+
+    h1 { color: #00d4ff; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #00d4ff; padding-bottom: 10px; margin-bottom: 30px; }
+
+    /* テーブルデザイン */
+    .table-responsive {
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    th { color: #00ff88; font-weight: 600; text-transform: uppercase; font-size: 0.9rem; }
+    td { vertical-align: middle; }
+
+    /* 入力フォーム */
+    .edit-input {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        padding: 8px;
+        border-radius: 4px;
+        width: 100%;
+    }
+    .edit-input:focus { border-color: #00d4ff; outline: none; }
+
+    /* ボタン */
+    .btn-update {
+        background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    }
+    .btn-delete {
+        background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    }
+    .btn-back {
+        display: inline-block; margin-top: 20px; color: #00d4ff; text-decoration: none; border: 1px solid #00d4ff; padding: 10px 20px; border-radius: 30px; transition: 0.3s;
+    }
+    .btn-back:hover { background: rgba(0, 212, 255, 0.2); }
+
+</style>
+
+<div class="manager-container">
+    <h1>Personnel Database</h1>
+
+    <div class="table-responsive">
+        @if (!Model.Any())
+        {
+            <p style="text-align:center; color:#aaa;">No data found.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th width="5%">ID</th>
+                        <th width="20%">Name</th>
+                        <th width="20%">Affiliation</th>
+                        <th width="30%">Notes</th>
+                        <th width="25%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <form asp-action="Update" method="post">
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <td>@item.Id</td>
+                                <td><input type="text" name="name" value="@item.Name" class="edit-input" /></td>
+                                <td><input type="text" name="affiliation" value="@item.Affiliation" class="edit-input" /></td>
+                                <td><textarea name="notes" class="edit-input" rows="1">@item.Notes</textarea></td>
+                                <td>
+                                    <button type="submit" class="btn-update">Update</button>
+                                    <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('Are you sure?');">Del</button>
+                                </td>
+                            </form>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <a href="/" class="btn-back">← BACK TO DASHBOARD</a>
+</div>
