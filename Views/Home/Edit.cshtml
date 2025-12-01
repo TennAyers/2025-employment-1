@@ -9,7 +9,7 @@
     body { background-color: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; }
     
     .manager-container {
-        max-width: 1000px;
+        max-width: 1200px; /* 横幅を広げました */
         margin: 50px auto;
         padding: 20px;
     }
@@ -25,11 +25,10 @@
         box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
     }
 
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; /* 列幅を固定 */ }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); vertical-align: top; }
     th { color: #00ff88; font-weight: 600; text-transform: uppercase; font-size: 0.9rem; }
-    td { vertical-align: middle; }
-
+    
     /* 入力フォーム */
     .edit-input {
         background: rgba(0,0,0,0.3);
@@ -38,15 +37,38 @@
         padding: 8px;
         border-radius: 4px;
         width: 100%;
+        box-sizing: border-box;
     }
     .edit-input:focus { border-color: #00d4ff; outline: none; }
 
+    /* 会話ログ表示エリア */
+    .logs-wrapper {
+        max-height: 100px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        padding: 5px;
+        font-size: 0.8rem;
+        scrollbar-width: thin;
+        scrollbar-color: #00d4ff transparent;
+    }
+    .logs-wrapper::-webkit-scrollbar { width: 4px; }
+    .logs-wrapper::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+
+    .log-entry {
+        border-bottom: 1px dashed rgba(255,255,255,0.1);
+        margin-bottom: 4px;
+        padding-bottom: 2px;
+    }
+    .log-date { color: #00ff88; font-size: 0.7rem; margin-right: 5px; }
+    .log-content { color: #ddd; }
+
     /* ボタン */
     .btn-update {
-        background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+        background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px;
     }
     .btn-delete {
-        background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+        background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%;
     }
     .btn-back {
         display: inline-block; margin-top: 20px; color: #00d4ff; text-decoration: none; border: 1px solid #00d4ff; padding: 10px 20px; border-radius: 30px; transition: 0.3s;
@@ -69,10 +91,10 @@
                 <thead>
                     <tr>
                         <th width="5%">ID</th>
-                        <th width="20%">Name</th>
-                        <th width="20%">Affiliation</th>
-                        <th width="30%">Notes</th>
-                        <th width="25%">Actions</th>
+                        <th width="15%">Name</th>
+                        <th width="15%">Affiliation</th>
+                        <th width="20%">Notes</th>
+                        <th width="30%">Conversation Logs</th> <th width="15%">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,10 +106,29 @@
                                 <td>@item.Id</td>
                                 <td><input type="text" name="name" value="@item.Name" class="edit-input" /></td>
                                 <td><input type="text" name="affiliation" value="@item.Affiliation" class="edit-input" /></td>
-                                <td><textarea name="notes" class="edit-input" rows="1">@item.Notes</textarea></td>
+                                <td><textarea name="notes" class="edit-input" rows="3">@item.Notes</textarea></td>
+                                
+                                <td>
+                                    <div class="logs-wrapper">
+                                        @if (item.ConversationLogs != null && item.ConversationLogs.Any())
+                                        {
+                                            @foreach (var log in item.ConversationLogs.OrderByDescending(l => l.Date))
+                                            {
+                                                <div class="log-entry">
+                                                    <span class="log-date">@log.Date.ToString("MM/dd HH:mm")</span>
+                                                    <span class="log-content">@log.Content</span>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#666;">No logs</span>
+                                        }
+                                    </div>
+                                </td>
                                 <td>
                                     <button type="submit" class="btn-update">Update</button>
-                                    <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('Are you sure?');">Del</button>
+                                    <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('Are you sure?');">Delete</button>
                                 </td>
                             </form>
                         </tr>

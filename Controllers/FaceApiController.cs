@@ -17,41 +17,77 @@ namespace _2025_employment_1.Controllers
             _context = context;
         }
 
+        // 仮の組織ID取得メソッド
+        private int GetCurrentOrganizationId()
+        {
+            return 1;
+        }
+
         // 1. 顔の識別 (POST: api/face/identify)
         [HttpPost("identify")]
         public async Task<IActionResult> Identify([FromBody] IdentifyRequest request)
         {
             try 
             {
-                var inputDescriptor = JsonSerializer.Deserialize<float[]>(request.Descriptor);
-                if (inputDescriptor == null) return BadRequest("Invalid descriptor");
+                // 1. リクエスト自体のチェック
+                if (string.IsNullOrEmpty(request.Descriptor)) 
+                    return BadRequest("Descriptor is empty");
 
-                var allFaces = await _context.FaceMemos.Include(f => f.ConversationLogs).ToListAsync();
+                float[]? inputDescriptor;
+                try {
+                    inputDescriptor = JsonSerializer.Deserialize<float[]>(request.Descriptor);
+                } catch {
+                    return BadRequest("Invalid Descriptor JSON format");
+                }
+
+                if (inputDescriptor == null || inputDescriptor.Length == 0) 
+                    return BadRequest("Descriptor array is empty");
+
+                int currentOrgId = GetCurrentOrganizationId();
+
+                // 2. 自分の組織のFaceMemoを取得
+                var allFaces = await _context.FaceMemos
+                                             .Where(f => f.OrganizationId == currentOrgId)
+                                             .Include(f => f.ConversationLogs)
+                                             .ToListAsync();
                 
                 FaceMemo? bestMatch = null;
-                double minDistance = 0.6; // 閾値 (0.6以下なら同一人物とみなす)
+                double minDistance = 0.6;
 
                 foreach (var face in allFaces)
                 {
-                    var storedDescriptor = JsonSerializer.Deserialize<float[]>(face.FaceDescriptorJson);
-                    if (storedDescriptor != null)
+                    // ★修正: データ不備への防御コード
+                    if (string.IsNullOrEmpty(face.FaceDescriptorJson)) continue;
+
+                    try 
                     {
-                        var distance = EuclideanDistance(inputDescriptor, storedDescriptor);
-                        if (distance < minDistance)
+                        var storedDescriptor = JsonSerializer.Deserialize<float[]>(face.FaceDescriptorJson);
+                        
+                        // 配列の長さが違う場合は計算できないのでスキップ
+                        if (storedDescriptor != null && storedDescriptor.Length == inputDescriptor.Length)
                         {
-                            minDistance = distance;
-                            bestMatch = face;
+                            var distance = EuclideanDistance(inputDescriptor, storedDescriptor);
+                            if (distance < minDistance)
+                            {
+                                minDistance = distance;
+                                bestMatch = face;
+                            }
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 壊れたデータは無視して、サーバーログにだけ残す
+                        Console.WriteLine($"Error processing face ID {face.Id}: {ex.Message}");
+                        continue; 
                     }
                 }
 
                 if (bestMatch != null)
                 {
-                    // 直近の会話ログを3件取得
                     var logs = await _context.ConversationLogs
                         .Where(l => l.FaceMemoId == bestMatch.Id)
                         .OrderByDescending(l => l.Date)
-                        .Take(3)
+                        .Take(5)
                         .Select(l => new { l.Date, l.Content })
                         .ToListAsync();
 
@@ -61,7 +97,7 @@ namespace _2025_employment_1.Controllers
                         name = bestMatch.Name, 
                         affiliation = bestMatch.Affiliation, 
                         notes = bestMatch.Notes,
-                        logs = logs // 会話ログも返す
+                        logs = logs 
                     });
                 }
                 
@@ -69,7 +105,9 @@ namespace _2025_employment_1.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                // サーバーのコンソールにエラー詳細を表示
+                Console.WriteLine($"CRITICAL ERROR in Identify: {ex.Message}");
+                return StatusCode(500, "Internal Server Error: " + ex.Message);
             }
         }
 
@@ -77,32 +115,52 @@ namespace _2025_employment_1.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] FaceMemo model)
         {
-            _context.FaceMemos.Add(model);
-            await _context.SaveChangesAsync();
-            return Ok(new { success = true, name = model.Name });
+            try {
+                // 必須項目のチェック
+                if(string.IsNullOrEmpty(model.FaceDescriptorJson))
+                    return BadRequest("顔データが不足しています");
+
+                model.OrganizationId = GetCurrentOrganizationId();
+                model.CreatedAt = DateTime.Now;
+
+                _context.FaceMemos.Add(model);
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, name = model.Name });
+            }
+            catch(Exception ex) {
+                Console.WriteLine($"Register Error: {ex.Message}");
+                return StatusCode(500, ex.Message);
+            }
         }
 
         // 3. 会話ログの追加 (POST: api/face/add_log)
         [HttpPost("add_log")]
         public async Task<IActionResult> AddLog([FromBody] LogRequest request)
         {
-            var face = await _context.FaceMemos.FindAsync(request.FaceId);
-            if (face == null) return NotFound("User not found");
+            try {
+                int currentOrgId = GetCurrentOrganizationId();
+                var face = await _context.FaceMemos
+                                         .FirstOrDefaultAsync(f => f.Id == request.FaceId && f.OrganizationId == currentOrgId);
 
-            var log = new ConversationLog
-            {
-                FaceMemoId = request.FaceId,
-                Content = request.Content,
-                Date = DateTime.Now
-            };
+                if (face == null) return NotFound("User not found or access denied");
 
-            _context.ConversationLogs.Add(log);
-            await _context.SaveChangesAsync();
+                var log = new ConversationLog
+                {
+                    FaceMemoId = request.FaceId,
+                    Content = request.Content,
+                    Date = DateTime.Now
+                };
 
-            return Ok(new { success = true });
+                _context.ConversationLogs.Add(log);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true });
+            }
+            catch(Exception ex) {
+                return StatusCode(500, ex.Message);
+            }
         }
 
-        // 距離計算ロジック
         private double EuclideanDistance(float[] d1, float[] d2)
         {
             double sum = 0.0;
@@ -111,7 +169,6 @@ namespace _2025_employment_1.Controllers
         }
     }
 
-    // リクエスト用クラス
-    public class IdentifyRequest { public string Descriptor { get; set; } }
-    public class LogRequest { public int FaceId { get; set; } public string Content { get; set; } }
+    public class IdentifyRequest { public string Descriptor { get; set; } = ""; }
+    public class LogRequest { public int FaceId { get; set; } public string Content { get; set; } = ""; }
 }

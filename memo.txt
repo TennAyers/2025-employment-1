@@ -12,6 +12,8 @@ https://dotnet.microsoft.com/ja-jp/download/dotnet/thank-you/runtime-9.0.11-wind
 ・githubのリンク
 https://github.com/TennAyers/2025-employment-1.git
 
+gemin piキー：AIzaSyACdCeSKwHlLhl55na5Jl23ESUbyFaHOnA
+
 コマンド
 dotnet run
 dontnet built
