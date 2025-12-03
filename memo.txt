@@ -1,5 +1,3 @@
-//環境構築のメモ
-
 .NET SDK
 
 Visual Studio Code (VSC)
@@ -7,19 +5,10 @@ Visual Studio Code (VSC)
 C# Dev Kit (VSC拡張機能)
 
 
-.NET 9.0のダウンロード用リンク
-https://dotnet.microsoft.com/ja-jp/download/dotnet/thank-you/runtime-9.0.11-windows-x64-installer?cid=getdotnetcore
-・githubのリンク
-https://github.com/TennAyers/2025-employment-1.git
-
-gemin piキー：AIzaSyACdCeSKwHlLhl55na5Jl23ESUbyFaHOnA
-
 コマンド
 dotnet run
 dontnet built
-#DB更新時に必要なコマンド
 dotnet ef migrations add InitialCreate
-dotnet ef migrations add AddFaceMemoTable
 dotnet ef database update
 
 1.プロジェクト作成
@@ -79,9 +68,3 @@ dotnet ef database update
 
 
 
-
-JQueryがうまく認識できていないからlibフォルダーをrootフォルダーに移行
-
-・face-api.jsの導入
-jsフォルダーにfacre-api.jsをgituhubからダウンロードして保存
-modelフォルダーをjsフォルダーにコピーして保存
