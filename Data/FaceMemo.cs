@@ -30,7 +30,7 @@ namespace _2025_employment_1.Models
 
         // データの所有者である組織 (外部キー)
         // これが同じユーザー同士なら、このFaceMemoを閲覧できる
-        public int OrganizationId { get; set; }
+        public Guid OrganizationId { get; set; }
 
         [ForeignKey("OrganizationId")]
         [JsonIgnore]

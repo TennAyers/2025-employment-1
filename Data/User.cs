@@ -7,7 +7,7 @@ namespace _2025_employment_1.Models
     public class User
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         public string Email { get; set; } // ログインID代わり
@@ -16,9 +16,7 @@ namespace _2025_employment_1.Models
         public string PasswordHash { get; set; } // パスワード（ハッシュ化して保存推奨）
 
         public string FullName { get; set; }
-
-        // 所属する組織 (外部キー)
-        public int OrganizationId { get; set; }
+        public Guid? OrganizationId { get; set; }
 
         [ForeignKey("OrganizationId")]
         [JsonIgnore]

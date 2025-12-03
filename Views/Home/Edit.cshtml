@@ -9,12 +9,16 @@
     body { background-color: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; }
     
     .manager-container {
-        max-width: 1200px; /* 横幅を広げました */
+        max-width: 1400px; /* 横幅を少し広げました */
         margin: 50px auto;
         padding: 20px;
     }
 
     h1 { color: #00d4ff; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #00d4ff; padding-bottom: 10px; margin-bottom: 30px; }
+
+    /* カードスタイル */
+    .card { background: rgba(255,255,255,0.1); border: none; color: white; }
+    .card-header { border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold; }
 
     /* テーブルデザイン */
     .table-responsive {
@@ -25,7 +29,7 @@
         box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
     }
 
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; /* 列幅を固定 */ }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); vertical-align: top; }
     th { color: #00ff88; font-weight: 600; text-transform: uppercase; font-size: 0.9rem; }
     
@@ -41,49 +45,60 @@
     }
     .edit-input:focus { border-color: #00d4ff; outline: none; }
 
-    /* 会話ログ表示エリア */
+    /* ★追加：会話ログ表示エリアのデザイン */
     .logs-wrapper {
-        max-height: 100px;
-        overflow-y: auto;
+        max-height: 120px; /* 高さ制限 */
+        overflow-y: auto;  /* スクロールバーを表示 */
         background: rgba(0, 0, 0, 0.3);
         border-radius: 4px;
-        padding: 5px;
+        padding: 8px;
         font-size: 0.8rem;
-        scrollbar-width: thin;
-        scrollbar-color: #00d4ff transparent;
+        border: 1px solid rgba(255,255,255,0.1);
     }
-    .logs-wrapper::-webkit-scrollbar { width: 4px; }
-    .logs-wrapper::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+    /* スクロールバーをカッコよくする */
+    .logs-wrapper::-webkit-scrollbar { width: 6px; }
+    .logs-wrapper::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 3px; }
+    .logs-wrapper::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
 
     .log-entry {
         border-bottom: 1px dashed rgba(255,255,255,0.1);
-        margin-bottom: 4px;
-        padding-bottom: 2px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
     }
-    .log-date { color: #00ff88; font-size: 0.7rem; margin-right: 5px; }
-    .log-content { color: #ddd; }
+    .log-entry:last-child { border-bottom: none; margin-bottom: 0; }
+    .log-date { color: #00ff88; font-weight: bold; margin-right: 5px; font-size: 0.75rem; }
+    .log-content { color: #ddd; display: block; margin-top: 2px; }
 
     /* ボタン */
-    .btn-update {
-        background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px;
-    }
-    .btn-delete {
-        background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%;
-    }
-    .btn-back {
-        display: inline-block; margin-top: 20px; color: #00d4ff; text-decoration: none; border: 1px solid #00d4ff; padding: 10px 20px; border-radius: 30px; transition: 0.3s;
-    }
+    .btn-update { background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px; }
+    .btn-delete { background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; }
+    .btn-back { display: inline-block; margin-top: 20px; color: #00d4ff; text-decoration: none; border: 1px solid #00d4ff; padding: 10px 20px; border-radius: 30px; transition: 0.3s; }
     .btn-back:hover { background: rgba(0, 212, 255, 0.2); }
-
 </style>
 
 <div class="manager-container">
+    <h2>ようこそ、@ViewBag.CurrentUserName さん</h2>
+    
+    <div class="card mt-4 mb-5">
+        <div class="card-header">
+            ログイン中のユーザー情報
+        </div>
+        <div class="card-body">
+            <p><strong>ユーザーID：</strong> @ViewBag.currentUserId</p>
+            <p><strong>ユーザー名：</strong> @ViewBag.CurrentUserName</p>
+            <p><strong>所属組織：</strong> @ViewBag.CurrentOrgName (ID: @ViewBag.CurrentOrgId)</p>
+            <p><strong>認証状態：</strong> @(User.Identity?.IsAuthenticated == true ? "ログイン中" : "未ログイン")</p>
+            <hr />
+            <a href="/Account/Logout" class="btn btn-danger">ログアウトする</a>
+        </div>
+    </div>
+
     <h1>Personnel Database</h1>
 
     <div class="table-responsive">
-        @if (!Model.Any())
+        @if (Model == null || !Model.Any())
         {
-            <p style="text-align:center; color:#aaa;">No data found.</p>
+            <p style="text-align:center; color:#aaa;">No data found for your organization.</p>
         }
         else
         {
@@ -91,10 +106,11 @@
                 <thead>
                     <tr>
                         <th width="5%">ID</th>
-                        <th width="15%">Name</th>
-                        <th width="15%">Affiliation</th>
-                        <th width="20%">Notes</th>
-                        <th width="30%">Conversation Logs</th> <th width="15%">Actions</th>
+                        <th width="12%">Name</th>
+                        <th width="12%">所属n</th>
+                        <th width="15%">メモ</th>
+                        <th width="40%">会話ログ</th>
+                        <th width="16%"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -103,10 +119,11 @@
                         <tr>
                             <form asp-action="Update" method="post">
                                 <input type="hidden" name="id" value="@item.Id" />
+                                
                                 <td>@item.Id</td>
                                 <td><input type="text" name="name" value="@item.Name" class="edit-input" /></td>
                                 <td><input type="text" name="affiliation" value="@item.Affiliation" class="edit-input" /></td>
-                                <td><textarea name="notes" class="edit-input" rows="3">@item.Notes</textarea></td>
+                                <td><textarea name="notes" class="edit-input" rows="4">@item.Notes</textarea></td>
                                 
                                 <td>
                                     <div class="logs-wrapper">
@@ -115,17 +132,18 @@
                                             @foreach (var log in item.ConversationLogs.OrderByDescending(l => l.Date))
                                             {
                                                 <div class="log-entry">
-                                                    <span class="log-date">@log.Date.ToString("MM/dd HH:mm")</span>
+                                                    <span class="log-date">[@log.Date.ToString("yyyy/MM/dd HH:mm")]</span>
                                                     <span class="log-content">@log.Content</span>
                                                 </div>
                                             }
                                         }
                                         else
                                         {
-                                            <span style="color:#666;">No logs</span>
+                                            <span style="color:#666;">No logs available.</span>
                                         }
                                     </div>
                                 </td>
+
                                 <td>
                                     <button type="submit" class="btn-update">Update</button>
                                     <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('Are you sure?');">Delete</button>

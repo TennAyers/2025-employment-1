@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using _2025_employment_1.Data;
 using _2025_employment_1.Models;
 using System.Text.Json;
+using System.Security.Claims; // ★追加: Claim取得用
 
 namespace _2025_employment_1.Controllers
 {
@@ -17,10 +18,19 @@ namespace _2025_employment_1.Controllers
             _context = context;
         }
 
-        // 仮の組織ID取得メソッド
-        private int GetCurrentOrganizationId()
+        // ★修正: 組織ID (UUID) を取得するメソッド
+        private Guid GetCurrentOrganizationId()
         {
-            return 1;
+            // ログイン時に保存したClaimから取得
+            var orgIdStr = User.FindFirst("OrganizationId")?.Value;
+
+            if (Guid.TryParse(orgIdStr, out Guid orgGuid))
+            {
+                return orgGuid;
+            }
+            
+            // 取得できない場合は空のGuidを返す（必要に応じてエラー処理）
+            return Guid.Empty;
         }
 
         // 1. 顔の識別 (POST: api/face/identify)
@@ -43,9 +53,10 @@ namespace _2025_employment_1.Controllers
                 if (inputDescriptor == null || inputDescriptor.Length == 0) 
                     return BadRequest("Descriptor array is empty");
 
-                int currentOrgId = GetCurrentOrganizationId();
+                // ★修正: int ではなく Guid で受け取る
+                Guid currentOrgId = GetCurrentOrganizationId();
 
-                // 2. 自分の組織のFaceMemoを取得
+                // 2. 自分の組織のFaceMemoを取得 (Where句はGuid同士の比較になります)
                 var allFaces = await _context.FaceMemos
                                              .Where(f => f.OrganizationId == currentOrgId)
                                              .Include(f => f.ConversationLogs)
@@ -56,7 +67,7 @@ namespace _2025_employment_1.Controllers
 
                 foreach (var face in allFaces)
                 {
-                    // ★修正: データ不備への防御コード
+                    // データ不備への防御コード
                     if (string.IsNullOrEmpty(face.FaceDescriptorJson)) continue;
 
                     try 
@@ -76,7 +87,6 @@ namespace _2025_employment_1.Controllers
                     }
                     catch (Exception ex)
                     {
-                        // 壊れたデータは無視して、サーバーログにだけ残す
                         Console.WriteLine($"Error processing face ID {face.Id}: {ex.Message}");
                         continue; 
                     }
@@ -105,7 +115,6 @@ namespace _2025_employment_1.Controllers
             }
             catch (Exception ex)
             {
-                // サーバーのコンソールにエラー詳細を表示
                 Console.WriteLine($"CRITICAL ERROR in Identify: {ex.Message}");
                 return StatusCode(500, "Internal Server Error: " + ex.Message);
             }
@@ -120,6 +129,7 @@ namespace _2025_employment_1.Controllers
                 if(string.IsNullOrEmpty(model.FaceDescriptorJson))
                     return BadRequest("顔データが不足しています");
 
+                // ★修正: ここでGuidのIDが入る
                 model.OrganizationId = GetCurrentOrganizationId();
                 model.CreatedAt = DateTime.Now;
 
@@ -138,7 +148,10 @@ namespace _2025_employment_1.Controllers
         public async Task<IActionResult> AddLog([FromBody] LogRequest request)
         {
             try {
-                int currentOrgId = GetCurrentOrganizationId();
+                // ★修正: Guidで取得
+                Guid currentOrgId = GetCurrentOrganizationId();
+                
+                // ★修正: OrganizationId (Guid) で検索
                 var face = await _context.FaceMemos
                                          .FirstOrDefaultAsync(f => f.Id == request.FaceId && f.OrganizationId == currentOrgId);
 

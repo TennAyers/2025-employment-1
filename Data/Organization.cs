@@ -6,7 +6,7 @@ namespace _2025_employment_1.Models
     public class Organization
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; } // ★ int から Guid に変更
 
         [Required]
         public string Name { get; set; } 
