@@ -393,3 +393,4 @@ C:\Users\mtmas\OneDrive\HAL名古屋\就職関連\2025-employment-1\obj\Debug\ne
 C:\Users\mtmas\OneDrive\HAL名古屋\就職関連\2025-employment-1\obj\Debug\net9.0\compressed\jgkguzn1tg-5ipweew5fc.gz
 C:\Users\mtmas\OneDrive\HAL名古屋\就職関連\2025-employment-1\obj\Debug\net9.0\compressed\vmso0s46ym-5ipweew5fc.gz
 C:\Users\mtmas\OneDrive\HAL名古屋\就職関連\2025-employment-1\obj\Debug\net9.0\compressed\wqhs6xg6jw-4fm74znoir.gz
+C:\Users\mtmas\OneDrive\HAL名古屋\就職関連\2025-employment-1\obj\Debug\net9.0\compressed\ranbotxvqi-sy3xq614ue.gz

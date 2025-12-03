@@ -11,7 +11,7 @@
 手入力でallow pastingを入力して貼り付けできるようにして
 
 async function checkAvailableModels() {
-    const apiKey = typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : "AIzaSyACdCeSKwHlLhl55na5Jl23ESUbyFaHOnA";
+    const apiKey = typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : "AIzaSyBHit3eVWsJSv_qJLML_xR30xmWiAtZXD8";
     
     console.log("問い合わせ中...");
     try {
@@ -53,3 +53,4 @@ No,組織名,UUID
 8,品質管理課,9d7f6c3a-1b2e-48a5-bc9d-4e5f6a7b8c9d
 9,人事総務部,b2a4c6d8-9e0f-41a3-8c5d-7b9e0f2a4c6d
 10,第2開発室,4e6f8a0b-2c4d-6e8f-0a2b-4c6d8e0f2a4b
+
