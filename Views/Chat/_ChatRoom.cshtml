@@ -1,0 +1,35 @@
+@model _2025_employment_1.Data.ChatRoom
+
+<!-- ヘッダー: 戻るボタンとルーム名 -->
+<div class="d-flex align-items-center border-bottom border-secondary pb-2 mb-2">
+    <button class="btn btn-sm btn-outline-light me-2" onclick="loadChatList()">←</button>
+    <h5 class="text-white m-0">@Model.Name</h5>
+</div>
+
+<!-- メッセージエリア -->
+<div id="chatMessages" class="bg-black rounded p-2 mb-2" style="height: 300px; overflow-y: auto;">
+    @foreach (var msg in Model.Messages.OrderBy(m => m.SentAt))
+    {
+        var isMe = msg.SenderId == (Guid)ViewBag.CurrentUserId;
+        <div class="d-flex @(isMe ? "justify-content-end" : "justify-content-start") mb-2">
+            <div class="p-2 rounded @(isMe ? "bg-primary text-white" : "bg-secondary text-light")" style="max-width: 80%; font-size: 0.9rem;">
+                @if (!isMe)
+                {
+                    <small class="d-block text-warning" style="font-size: 0.7em;">@(msg.Sender?.FullName ?? "不明")</small>
+                }
+                <span>@msg.Content</span>
+                <div style="font-size: 0.6em; text-align: right; opacity: 0.7;">@msg.SentAt.ToString("HH:mm")</div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- 送信エリア -->
+<div class="input-group">
+    <input type="text" id="chatInput" class="form-control bg-dark text-white border-secondary" placeholder="メッセージ..." onkeypress="handleChatEnter(event)">
+    <button class="btn btn-primary" onclick="sendChatMessage(@Model.Id)">送信</button>
+</div>
+
+<!-- 隠しデータ: JSで使う情報 -->
+<input type="hidden" id="currentRoomId" value="@Model.Id" />
+<input type="hidden" id="currentUserName" value="@ViewBag.CurrentUserName" />

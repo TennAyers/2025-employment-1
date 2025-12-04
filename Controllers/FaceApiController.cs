@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using _2025_employment_1.Data;
 using _2025_employment_1.Models;
 using System.Text.Json;
-using System.Security.Claims; // ★追加: Claim取得用
+using System.Security.Claims;
 
 namespace _2025_employment_1.Controllers
 {

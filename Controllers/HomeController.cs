@@ -120,33 +120,47 @@ public class HomeController : Controller
     // ----------------------------------------------------
     // 2. 更新処理 (POST)
     // ----------------------------------------------------
+    // HomeController.cs 内の Update メソッドを以下のように書き換えてください
+
     [HttpPost]
-    public async Task<IActionResult> Update(int id, string name, string affiliation, string notes)
+    public async Task<IActionResult> Update(
+      int id, 
+      string name, 
+    string affiliation, 
+    string notes,
+    // ▼ 追加: 新しい項目を引数に追加
+    string phoneNumber,
+    string email,
+    string socialMediaHandle
+)
+{
+    // 自分の組織IDを取得
+    Guid? currentOrgId = GetCurrentOrganizationId();
+
+    if (currentOrgId.HasValue)
     {
-        // 自分の組織IDを取得
-        Guid? currentOrgId = GetCurrentOrganizationId();
+        // ★セキュリティ重要: 自組織のデータのみ検索
+        var face = await _context.FaceMemos
+            .FirstOrDefaultAsync(m => m.Id == id && m.OrganizationId == currentOrgId.Value);
 
-        if (currentOrgId.HasValue)
+        if (face != null)
         {
-            // ★セキュリティ重要: 
-            // 「指定されたID」かつ「自分の組織IDと一致するもの」だけを検索して更新する
-            // これにより、他組織のデータを勝手に書き換えられないようにする
-            var face = await _context.FaceMemos
-                                     .FirstOrDefaultAsync(m => m.Id == id && m.OrganizationId == currentOrgId.Value);
+            face.Name = name;
+            face.Affiliation = affiliation;
+            face.Notes = notes;
+            
+            // ▼ 追加: 新しい項目を更新
+            face.PhoneNumber = phoneNumber;
+            face.Email = email;
+            face.SocialMediaHandle = socialMediaHandle;
 
-            if (face != null)
-            {
-                face.Name = name;
-                face.Affiliation = affiliation;
-                face.Notes = notes;
-                await _context.SaveChangesAsync();
-            }
+            await _context.SaveChangesAsync();
         }
-        
-        // 個人ユーザー(currentOrgId == null)の場合は更新権限なしとして何もしない
-
-        return RedirectToAction("Edit");
     }
+    
+    return RedirectToAction("Edit");
+}
+
 
     // ----------------------------------------------------
     // 3. 削除処理 (POST)

@@ -1,0 +1,88 @@
+@model _2025_employment_1.Data.ChatRoom
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5>@Model.Name (参加者: @Model.Members.Count 名)</h5>
+        </div>
+        <div class="card-body" id="chatHistory" style="height: 400px; overflow-y: scroll;">
+            @foreach (var msg in Model.Messages.OrderBy(m => m.SentAt))
+            {
+                var isMe = msg.SenderId == ViewBag.CurrentUserId;
+                <div class="d-flex @(isMe ? "justify-content-end" : "justify-content-start") mb-2">
+                    <div class="p-2 rounded @(isMe ? "bg-info text-white" : "bg-light border")" style="max-width: 70%;">
+                        @* 修正: Name ではなく FullName を使用 *@
+                        <small class="d-block text-secondary">@(msg.Sender?.FullName ?? "不明なユーザー")</small>
+                        <span>@msg.Content</span>
+                        <div style="font-size: 0.7em; text-align: right;">@msg.SentAt.ToString("HH:mm")</div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <div class="input-group">
+                <input type="text" id="messageInput" class="form-control" placeholder="メッセージを入力...">
+                <button id="sendButton" class="btn btn-primary">送信</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SignalR ライブラリ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chathub")
+        .build();
+
+    const roomId = "@Model.Id";
+    const username = "@ViewBag.CurrentUserName";
+
+    // メッセージを受信したときの処理
+    connection.on("ReceiveMessage", function (user, message, time) {
+        const isMe = user === username;
+        const alignClass = isMe ? "justify-content-end" : "justify-content-start";
+        const bgClass = isMe ? "bg-info text-white" : "bg-light border";
+
+        const msgHtml = `
+            <div class="d-flex ${alignClass} mb-2">
+                <div class="p-2 rounded ${bgClass}" style="max-width: 70%;">
+                    <small class="d-block text-secondary">${user}</small>
+                    <span>${message}</span>
+                    <div style="font-size: 0.7em; text-align: right;">${time}</div>
+                </div>
+            </div>`;
+        
+        const chatHistory = document.getElementById("chatHistory");
+        chatHistory.insertAdjacentHTML('beforeend', msgHtml);
+        chatHistory.scrollTop = chatHistory.scrollHeight; // 一番下へスクロール
+    });
+
+    connection.start().then(function () {
+        // 接続完了後、ルームに参加
+        connection.invoke("JoinRoom", roomId).catch(err => console.error(err));
+        document.getElementById("sendButton").disabled = false;
+    }).catch(function (err) {
+        return console.error(err.toString());
+    });
+
+    // 送信ボタンクリック時
+    document.getElementById("sendButton").addEventListener("click", function (event) {
+        const message = document.getElementById("messageInput").value;
+        if (!message) return;
+
+        // 1. DBに保存 (API呼び出し)
+        fetch('/Chat/SaveMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `roomId=${roomId}&content=${encodeURIComponent(message)}`
+        }).then(() => {
+            // 2. SignalRで全員に配信
+            connection.invoke("SendMessage", roomId, username, message).catch(err => console.error(err));
+            document.getElementById("messageInput").value = "";
+        });
+        
+        event.preventDefault();
+    });
+</script>

@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <h1>Personnel Database</h1>
+    <h1>登録一覧</h1>
 
     <div class="table-responsive">
         @if (Model == null || !Model.Any())
@@ -103,56 +103,64 @@
         else
         {
             <table>
-                <thead>
-                    <tr>
-                        <th width="5%">ID</th>
-                        <th width="12%">Name</th>
-                        <th width="12%">所属n</th>
-                        <th width="15%">メモ</th>
-                        <th width="40%">会話ログ</th>
-                        <th width="16%"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
-                    {
-                        <tr>
-                            <form asp-action="Update" method="post">
-                                <input type="hidden" name="id" value="@item.Id" />
-                                
-                                <td>@item.Id</td>
-                                <td><input type="text" name="name" value="@item.Name" class="edit-input" /></td>
-                                <td><input type="text" name="affiliation" value="@item.Affiliation" class="edit-input" /></td>
-                                <td><textarea name="notes" class="edit-input" rows="4">@item.Notes</textarea></td>
-                                
-                                <td>
-                                    <div class="logs-wrapper">
-                                        @if (item.ConversationLogs != null && item.ConversationLogs.Any())
-                                        {
-                                            @foreach (var log in item.ConversationLogs.OrderByDescending(l => l.Date))
-                                            {
-                                                <div class="log-entry">
-                                                    <span class="log-date">[@log.Date.ToString("yyyy/MM/dd HH:mm")]</span>
-                                                    <span class="log-content">@log.Content</span>
-                                                </div>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span style="color:#666;">No logs available.</span>
-                                        }
-                                    </div>
-                                </td>
+    <thead>
+        <tr>
+            <th width="5%">ID</th>
+            <th width="10%">名前</th>
+            <th width="10%">所属</th>
+            <th width="10%">電話番号</th>
+            <th width="10%">Email</th>
+            <th width="10%">SNS</th>
+            <th width="15%">メモ</th>
+            <th width="30%">会話ログ</th>
+            <th width="15%">操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <form asp-action="Update" method="post">
+                    <input type="hidden" name="id" value="@item.Id" />
+                    
+                    <td>@item.Id</td>
+                    
+                    <td><input type="text" name="name" value="@item.Name" class="edit-input" /></td>
+                    <td><input type="text" name="affiliation" value="@item.Affiliation" class="edit-input" /></td>
 
-                                <td>
-                                    <button type="submit" class="btn-update">Update</button>
-                                    <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('Are you sure?');">Delete</button>
-                                </td>
-                            </form>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                    <td><input type="text" name="phoneNumber" value="@item.PhoneNumber" class="edit-input" /></td>
+                    <td><input type="text" name="email" value="@item.Email" class="edit-input" /></td>
+                    <td><input type="text" name="socialMediaHandle" value="@item.SocialMediaHandle" class="edit-input" /></td>
+                    <td><textarea name="notes" class="edit-input" rows="4">@item.Notes</textarea></td>
+                    
+                    <td>
+                        <div class="logs-wrapper">
+                            @if (item.ConversationLogs != null && item.ConversationLogs.Any())
+                            {
+                                @foreach (var log in item.ConversationLogs.OrderByDescending(l => l.Date))
+                                {
+                                    <div class="log-entry">
+                                        <span class="log-date">[@log.Date.ToString("yyyy/MM/dd")]</span>
+                                        <span class="log-content">@log.Content</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <span style="color:#666;">ログなし</span>
+                            }
+                        </div>
+                    </td>
+
+                    <td>
+                        <button type="submit" class="btn-update">更新</button>
+                        <button type="submit" asp-action="Delete" class="btn-delete" onclick="return confirm('本当に削除しますか？');">削除</button>
+                    </td>
+                </form>
+            </tr>
+        }
+    </tbody>
+</table>
         }
     </div>
 

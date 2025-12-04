@@ -14,7 +14,7 @@ namespace _2025_employment_1.Models
         [Required]
         public string? Name { get; set; }
 
-        public string? Affiliation { get; set; } // これは「登録された人物の所属」
+        public string? Affiliation { get; set; }
 
         public string? Notes { get; set; }
         public string? PhoneNumber { get; set; }

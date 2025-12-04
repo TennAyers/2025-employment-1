@@ -14,6 +14,11 @@ namespace _2025_employment_1.Data
         public DbSet<ConversationLog> ConversationLogs { get; set; }
         public DbSet<Organization> Organizations { get; set; }
         public DbSet<User> Users { get; set; }
+        
+        // 既存のコードに追加
+        public DbSet<ChatRoom> ChatRooms { get; set; }
+        public DbSet<ChatMember> ChatMembers { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

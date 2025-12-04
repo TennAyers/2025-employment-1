@@ -1,0 +1,55 @@
+@model List<_2025_employment_1.Data.ChatRoom>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="text-white">チャット一覧</h4>
+    <button class="btn btn-sm btn-outline-light" onclick="toggleCreateMode()">＋ 新規作成</button>
+</div>
+
+<!-- ルーム一覧 -->
+<div id="roomListArea" class="list-group mb-3">
+    @if (Model != null && Model.Count > 0)
+    {
+        @foreach (var room in Model)
+        {
+            <button type="button" class="list-group-item list-group-item-action bg-dark text-white border-secondary" 
+                    onclick="openChatRoom(@room.Id)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">@room.Name</span>
+                    <small class="text-muted">@room.CreatedAt.ToString("MM/dd")</small>
+                </div>
+            </button>
+        }
+    }
+    else
+    {
+        <div class="text-muted small text-center">参加中のトークはありません</div>
+    }
+</div>
+
+<!-- 新規作成フォーム (最初は非表示) -->
+<div id="createRoomArea" class="card bg-secondary text-white" style="display:none;">
+    <div class="card-body p-2">
+        <h6 class="card-title">グループ作成</h6>
+        <div class="mb-2">
+            <input type="text" id="newRoomName" class="form-control form-control-sm" placeholder="ルーム名" />
+        </div>
+        <div class="mb-2" style="max-height: 150px; overflow-y: auto;">
+            @if (ViewBag.OrgUsers != null)
+            {
+                @foreach (var user in (List<_2025_employment_1.Models.User>)ViewBag.OrgUsers)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="targetUserIds" value="@user.Id" id="u_@user.Id">
+                        <label class="form-check-label small" for="u_@user.Id">
+                            @(user.FullName ?? user.Email)
+                        </label>
+                    </div>
+                }
+            }
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-sm btn-light" onclick="toggleCreateMode()">キャンセル</button>
+            <button class="btn btn-sm btn-success" onclick="submitCreateRoom()">作成</button>
+        </div>
+    </div>
+</div>

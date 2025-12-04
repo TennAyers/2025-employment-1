@@ -1,5 +1,6 @@
 using _2025_employment_1.Data;
 using Microsoft.EntityFrameworkCore;
+using _2025_employment_1.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,16 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ★認証設定：ログイン画面の場所を「/Auth/Login」に変更しました
+// ★認証設定：ログイン画面の場所を「/Account/Login」に変更しました
 builder.Services.AddAuthentication("MyCookieAuth")
     .AddCookie("MyCookieAuth", options =>
     {
         options.Cookie.Name = "MyApp.Session";
-        options.LoginPath = "/Account/Login"; // ← ここを変更！AuthControllerのLoginアクションへ飛ばします
+        options.LoginPath = "/Account/Login"; // ← ここを変更！AccountControllerのLoginアクションへ飛ばします
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
     });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR(); 
 
 var app = builder.Build();
 
@@ -41,5 +43,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+
+app.MapHub<ChatHub>("/chathub"); // ★修正: Hubs.ChatHub ではなく ChatHub でOKです
 
 app.Run();
